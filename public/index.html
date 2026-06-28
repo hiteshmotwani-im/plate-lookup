@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plate lookup test</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+  h1 { font-size: 20px; }
+  .note { background: #fff7e6; border: 1px solid #ffe0a3; padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+  .row { display: flex; gap: 8px; margin-bottom: 12px; }
+  input { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; width: 100%; }
+  button { padding: 10px 16px; border: 0; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 15px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  .field { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+  .field span:first-child { color: #666; }
+  #result { margin-top: 20px; }
+  .empty { color: #888; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>Enter your plate</h1>
+  <div class="note">Test build. Runs on sample data until your provider username is connected. Try <b>DXB / F / 33333</b> — the same plate works free on the live API.</div>
+
+  <div class="row">
+    <input id="emirate" placeholder="Emirate (DXB)" style="flex:1" />
+    <input id="plateCode" placeholder="Code (A)" style="flex:1" />
+    <input id="plateNumber" placeholder="Number (12345)" style="flex:2" />
+  </div>
+  <button id="go">Look up vehicle</button>
+
+  <div id="result"><p class="empty">Vehicle details will appear here.</p></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const result = $("result");
+
+  async function lookup() {
+    const emirate = $("emirate").value.trim();
+    const plateCode = $("plateCode").value.trim();
+    const plateNumber = $("plateNumber").value.trim();
+    $("go").disabled = true;
+    result.innerHTML = '<p class="empty">Looking up…</p>';
+
+    try {
+      const params = new URLSearchParams({ emirate, plateCode, plateNumber });
+      const resp = await fetch("/lookup?" + params.toString());
+      const data = await resp.json();
+
+      if (data.error) { result.innerHTML = `<p class="empty">${data.error}</p>`; return; }
+      if (!data.found) { result.innerHTML = `<p class="empty">${data.message}</p>`; return; }
+
+      const v = data.vehicle;
+      result.innerHTML = `
+        <div class="field"><span>Make</span><span>${v.make ?? "—"}</span></div>
+        <div class="field"><span>Model</span><span>${v.model ?? "—"}</span></div>
+        <div class="field"><span>Year</span><span>${v.year ?? "—"}</span></div>
+        <div class="field"><span>Color</span><span>${v.color ?? "—"}</span></div>
+        <div class="field"><span>Registration</span><span>${v.regStatus ?? "—"}</span></div>
+        <div class="field"><span>Reg. expiry</span><span>${v.regExpiry ?? "—"}</span></div>
+        <p class="empty">Source: ${data.source}. These values would auto-fill your quote form.</p>`;
+    } catch (e) {
+      result.innerHTML = '<p class="empty">Something went wrong. Is the server running?</p>';
+    } finally {
+      $("go").disabled = false;
+    }
+  }
+
+  $("go").addEventListener("click", lookup);
+</script>
+</body>
+</html>

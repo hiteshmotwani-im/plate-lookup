@@ -1,0 +1,15 @@
+{
+  "name": "plate-lookup",
+  "version": "1.0.0",
+  "description": "Minimal UAE plate-number to vehicle-details lookup (broker onboarding test)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

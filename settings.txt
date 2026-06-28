@@ -1,0 +1,15 @@
+# ============================================================
+#  SETTINGS  -  edit this file in TextEdit, then save (Cmd+S).
+#  Lines starting with # are notes and are ignored.
+# ============================================================
+
+# Your carregistrationapi.ae username.
+# Leave it blank while testing with sample data.
+# Type your username right after the = sign, no spaces. Example: USERNAME=johnsmith
+USERNAME=
+
+# MODE controls where the car details come from:
+#   mock  =  built-in sample cars (no account needed, free, for practice)
+#   live  =  the real carregistrationapi.ae service (needs your username above)
+# Type mock or live after the = sign.
+MODE=mock
