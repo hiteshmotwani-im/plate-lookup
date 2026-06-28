@@ -45,7 +45,7 @@ const REGCHECK_USERNAME = process.env.REGCHECK_USERNAME || SETTINGS.USERNAME || 
 // Public Dubai endpoint (Make & Model, testable free with plate F33333).
 const REGCHECK_ENDPOINT = "https://www.regcheck.org.uk/api/reg.asmx";
 const REGCHECK_SOAP_ACTION = "http://regcheck.org.uk/CheckUAE";
-const REGCHECK_NAMESPACE = "http://regcheck.org.uk/";
+const REGCHECK_NAMESPACE = "http://regcheck.org.uk";
 // For other emirates + richer data (VIN etc.) you need the PRIVATE endpoint,
 // which also requires the owner's Emirates ID. Contact carregistrationapi.ae:
 //   https://www.carregistrationapi.ae/api/private/uae.asmx  (op=CheckUAE)
