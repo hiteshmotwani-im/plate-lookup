@@ -51,14 +51,15 @@
       if (!data.found) { result.innerHTML = `<p class="empty">${data.message}</p>`; return; }
 
       const v = data.vehicle;
-      result.innerHTML = `
-        <div class="field"><span>Make</span><span>${v.make ?? "—"}</span></div>
-        <div class="field"><span>Model</span><span>${v.model ?? "—"}</span></div>
-        <div class="field"><span>Year</span><span>${v.year ?? "—"}</span></div>
-        <div class="field"><span>Color</span><span>${v.color ?? "—"}</span></div>
-        <div class="field"><span>Registration</span><span>${v.regStatus ?? "—"}</span></div>
-        <div class="field"><span>Reg. expiry</span><span>${v.regExpiry ?? "—"}</span></div>
-        <p class="empty">Source: ${data.source}. These values would auto-fill your quote form.</p>`;
+      let html = "";
+      if (v.imageUrl) {
+        html += `<img src="${v.imageUrl}" alt="vehicle" style="max-width:100%;border-radius:8px;margin-bottom:12px" />`;
+      }
+      for (const [label, value] of v.fields) {
+        html += `<div class="field"><span>${label}</span><span>${value}</span></div>`;
+      }
+      html += `<p class="empty">Source: ${data.source}. These values would auto-fill your quote form.</p>`;
+      result.innerHTML = html;
     } catch (e) {
       result.innerHTML = '<p class="empty">Something went wrong. Is the server running?</p>';
     } finally {
