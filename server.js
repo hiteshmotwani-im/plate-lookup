@@ -53,12 +53,28 @@ const REGCHECK_NAMESPACE = "http://regcheck.org.uk";
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// Mock dataset. F33333 mirrors the real API's free test plate so the
-// switch from mock to live is seamless.
+// Mock dataset, shaped like the real provider's vehicleJson so the switch from
+// mock to live is seamless. F33333 mirrors the real API's free test plate.
 const MOCK = {
-  "DXB:F:33333":  { make: "Hyundai", model: "Santa Fe", year: null, color: null, regStatus: null, regExpiry: null },
-  "DXB:A:12345":  { make: "Toyota", model: "Land Cruiser", year: 2022, color: "White", regStatus: "Active", regExpiry: "2026-09-14" },
-  "AUH:11:55678": { make: "Nissan", model: "Patrol", year: 2021, color: "Black", regStatus: "Active", regExpiry: "2026-03-02" },
+  "DXB:F:33333": {
+    Description: "HYUNDAI SANTAFE", RegistrationYear: "2015",
+    CarMake: { CurrentTextValue: "HYUNDAI" }, CarModel: { CurrentTextValue: "SANTAFE" },
+    BodyStyle: { CurrentTextValue: "SUV" }, FuelType: { CurrentTextValue: "Diesel" },
+    NumberOfSeats: { CurrentTextValue: "7" }, NumberOfDoors: { CurrentTextValue: "5" },
+  },
+  "DXB:A:12345": {
+    Description: "TOYOTA LAND CRUISER", RegistrationYear: "2022",
+    CarMake: { CurrentTextValue: "TOYOTA" }, CarModel: { CurrentTextValue: "LAND CRUISER" },
+    BodyStyle: { CurrentTextValue: "SUV" }, FuelType: { CurrentTextValue: "Petrol" },
+    NumberOfSeats: { CurrentTextValue: "5" }, NumberOfDoors: { CurrentTextValue: "5" },
+    EngineSize: { CurrentTextValue: "4.0L" }, Transmission: { CurrentTextValue: "Automatic" },
+  },
+  "AUH:11:55678": {
+    Description: "NISSAN PATROL", RegistrationYear: "2021",
+    CarMake: { CurrentTextValue: "NISSAN" }, CarModel: { CurrentTextValue: "PATROL" },
+    BodyStyle: { CurrentTextValue: "SUV" }, FuelType: { CurrentTextValue: "Petrol" },
+    NumberOfSeats: { CurrentTextValue: "7" }, NumberOfDoors: { CurrentTextValue: "5" },
+  },
 };
 
 // --- small helpers for the SOAP/XML round-trip ----------------------------
@@ -74,22 +90,35 @@ function extractTag(xml, tag) {
   const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
   return m ? m[1] : null;
 }
-// RegCheck wraps values as { CurrentTextValue: "..." }; pull the plain value.
-function pick(node) {
-  if (node && typeof node === "object") return node.CurrentTextValue ?? null;
-  return node ?? null;
+// RegCheck wraps some values as { CurrentTextValue: "..." }; others are plain.
+// This returns the plain value either way.
+function val(node) {
+  if (node === null || node === undefined) return null;
+  if (typeof node === "object") return node.CurrentTextValue ?? node.CurrentValue ?? null;
+  const s = String(node).trim();
+  return s === "" ? null : s;
 }
 
-// Turn the provider's response into the single shape your form expects.
+// Pull every useful field the provider returns into a labelled, ordered list.
+// Fields that come back empty are dropped so the page only shows real data.
 function normalize(raw) {
-  return {
-    make: pick(raw.CarMake) ?? pick(raw.MakeDescription) ?? null,
-    model: pick(raw.CarModel) ?? pick(raw.ModelDescription) ?? null,
-    year: raw.RegistrationYear ?? null,
-    color: raw.Colour ?? raw.Color ?? null,
-    regStatus: raw.regStatus ?? raw.registration_status ?? null,
-    regExpiry: raw.regExpiry ?? raw.Expiry ?? null,
-  };
+  const candidates = [
+    ["Make", val(raw.CarMake) ?? val(raw.MakeDescription)],
+    ["Model", val(raw.CarModel) ?? val(raw.ModelDescription)],
+    ["Year", val(raw.RegistrationYear)],
+    ["Description", val(raw.Description)],
+    ["Body style", val(raw.BodyStyle)],
+    ["Engine size", val(raw.EngineSize)],
+    ["Fuel type", val(raw.FuelType)],
+    ["Transmission", val(raw.Transmission)],
+    ["Doors", val(raw.NumberOfDoors)],
+    ["Seats", val(raw.NumberOfSeats)],
+    ["Driver side", val(raw.DriverSide)],
+    ["VIN", val(raw.VechicleIdentificationNumber) ?? val(raw.VIN)],
+  ];
+  const fields = candidates.filter(([, v]) => v !== null && v !== undefined);
+  const imageUrl = val(raw.ImageUrl);
+  return { fields, imageUrl, hasData: fields.length > 0 };
 }
 
 // THE real call. SOAP request to RegCheck's CheckUAE method.
@@ -147,15 +176,12 @@ app.get("/lookup", async (req, res) => {
           message: "No match in sample data. Try DXB / F / 33333 (the real API's free test plate).",
         });
       }
-      return res.json({ found: true, source: "mock", vehicle: normalize({
-        CarMake: { CurrentTextValue: hit.make }, CarModel: { CurrentTextValue: hit.model },
-        RegistrationYear: hit.year, Colour: hit.color, regStatus: hit.regStatus, regExpiry: hit.regExpiry,
-      }) });
+      return res.json({ found: true, source: "mock", vehicle: normalize(hit) });
     }
 
     const vehicle = await callRealProvider({ registrationNumber });
-    if (!vehicle) {
-      return res.json({ found: false, message: "No vehicle found for that plate." });
+    if (!vehicle || !vehicle.hasData) {
+      return res.json({ found: false, message: "No vehicle details found for that plate." });
     }
     return res.json({ found: true, source: "provider", vehicle });
   } catch (err) {
